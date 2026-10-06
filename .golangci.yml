@@ -1,0 +1,35 @@
+version: "2"
+
+# Code-style limits from the course rules (Go):
+#   Ф5 functions <= 40 lines, Ц5 cyclomatic complexity <= 10,
+#   А5 <= 7 arguments, М5 no magic numbers in comparisons,
+#   К5 Godoc on exported names, И5 Go naming, Р6 lines <= 120 characters.
+linters:
+  enable:
+    - funlen
+    - gocyclo
+    - mnd
+    - lll
+    - revive
+  settings:
+    funlen:
+      lines: 40
+      statements: -1
+    gocyclo:
+      min-complexity: 10
+    mnd:
+      checks:
+        - condition
+    lll:
+      line-length: 120
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: argument-limit
+          arguments: [7]
+
+formatters:
+  enable:
+    - gofmt

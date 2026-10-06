@@ -1,0 +1,35 @@
+# Build output
+bin/
+/pkg-dep-vis
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.o
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Generated diagrams
+*.png
+*.svg
+
+# Local environment
+.env
+
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+.DS_Store
