@@ -17,8 +17,8 @@ const (
 
 // Run executes the program with the given arguments and returns
 // the process exit code.
-func Run(args []string, stdout, stderr io.Writer) int {
-	_ = args
+func Run(configPath string, stdout, stderr io.Writer) int {
+	_ = configPath
 	_, err := fmt.Fprintf(stdout, "%s: dependency graph visualizer for pip packages\n", Name)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "error:", err)

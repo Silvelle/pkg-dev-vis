@@ -2,11 +2,17 @@
 package main
 
 import (
+	"flag"
 	"os"
 
 	"github.com/Silvelle/pkg-dep-vis/src/app"
 )
 
 func main() {
-	os.Exit(app.Run(os.Args[1:], os.Stdout, os.Stderr))
+	configPath := flag.String(
+		"config",
+		"config.ini",
+		"Path to INI file",
+	)
+	os.Exit(app.Run(*configPath, os.Stdout, os.Stderr))
 }
