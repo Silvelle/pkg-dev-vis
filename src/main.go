@@ -1,12 +1,16 @@
-// Command pkg-dep-vis visualizes the dependency graph of a pip package.
+// Command pkg-dep-vis displays configuration for a pip dependency visualizer.
 package main
 
 import (
+	"flag"
 	"os"
 
 	"github.com/Silvelle/pkg-dep-vis/src/app"
 )
 
+// main parses the config-file flag and exits with the result of app.Run.
 func main() {
-	os.Exit(app.Run(os.Args[1:], os.Stdout, os.Stderr))
+	configPath := flag.String("config", "config.ini", "Path to INI file")
+	flag.Parse()
+	os.Exit(app.Run(*configPath, os.Stdout, os.Stderr))
 }
