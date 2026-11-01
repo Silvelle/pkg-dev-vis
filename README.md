@@ -1,70 +1,98 @@
-# Визуализатор графа зависимостей pip-пакетов
+# Dependency graph visualizer for pip packages
 
-## Общее описание
+Coursework, variant 19. Stage 1 implements a configurable CLI and displays its settings.
+Later stages will collect dependencies, traverse them with non-recursive BFS,
+find reverse dependencies, and produce PlantUML. Those stages are not implemented yet.
 
-CLI-инструмент для визуализации графа зависимостей пакетов Python (pip),
-разработанный в рамках практической работы №2 по дисциплине
-«Конфигурационное управление» (Вариант №19).
+## Build and test
 
-Зависимости извлекаются без менеджеров пакетов и сторонних библиотек.
-Граф строится обходом в ширину (BFS) без рекурсии и выводится на языке
-диаграмм PlantUML.
-
-Написан на Go без cgo: собирается в один статический бинарный файл,
-не требует Docker, графических библиотек и системных пакетов.
-
-Этапы работы:
-
-1. Минимальный прототип с конфигурацией (INI-файл) — *не начат*
-2. Сбор данных (прямые зависимости) — *не начат*
-3. Основные операции (граф, BFS, циклы, тестовый режим) — *не начат*
-4. Дополнительные операции (обратные зависимости) — *не начат*
-5. Визуализация (PlantUML) — *не начат*
-
-## Функции и настройки
-
-*Будет заполнено по мере выполнения этапов.*
-
-## Сборка и запуск
-
-Требуется только Go 1.27+.
+Requires Go 1.27 or newer. Uses the standard library only.
 
 ```bash
-make build   # собрать в bin/pkg-dep-vis
-make run     # запустить (аргументы: make run ARGS="...")
-./run.sh     # собрать и запустить (аргументы передаются программе)
-make test    # запустить тесты
-make lint    # проверить стиль кода (нужен golangci-lint)
-make check   # тесты + стиль + правила оформления репозитория
-make setup   # включить проверку сообщений коммитов (один раз после клонирования)
-make clean   # удалить bin/
+make build
+make test
+make check
 ```
 
-### Проверки оформления
+`make check` also requires golangci-lint. To use a writable temporary Go cache:
 
-- `.golangci.yml` — правила курса для Go: функции до 40 строк (Ф5),
-  до 7 аргументов (А5), цикломатическая сложность до 10 (Ц5),
-  без магических чисел в сравнениях (М5), Godoc (К5), имена (И5),
-  строки до 120 символов (Р6).
-- `scripts/check_repo.sh` — структура репозитория (С1–С5),
-  сообщения коммитов (С6), отсутствие архивов, бинарных файлов,
-  артефактов сборки и настроек редактора (Г1–Г5),
-  файлы до 1000 строк (Р1), строки до 120 символов (Р6).
-- `.githooks/commit-msg` — отклоняет коммит, если сообщение не
-  соответствует Conventional Commits (`type(scope): описание`).
-- GitHub Actions (`.github/workflows/ci.yml`) выполняет все проверки
-  при каждом pull request и push в `main`.
-
-Структура проекта:
-
-```
-src/main.go      точка входа
-src/app/         разбор аргументов и запуск
-configs/         примеры конфигурационных файлов
-tests/           тесты
-scripts/         проверка репозитория и демонстрационные скрипты
+```bash
+GOCACHE=/tmp/pkg-dev-vis-go-cache make test
 ```
 
-## Примеры использования
+## Configuration
 
-*Будет заполнено по мере выполнения этапов.*
+The INI file must contain exactly one `[settings]` section and all three keys:
+
+| Key | Meaning |
+| --- | --- |
+| `package` | Python distribution name; uppercase ASCII letters only in test mode |
+| `repository` | HTTP/HTTPS URL in normal mode; readable regular file in test mode |
+| `test_mode` | Exactly `true` or `false`, lowercase |
+
+Normal package names follow the Python Packaging name specification:
+ASCII letters, digits, period, underscore and hyphen, starting and ending with a letter or digit.
+See https://packaging.python.org/en/latest/specifications/name-normalization/.
+
+Whitespace around lines, keys and values is ignored. Blank lines and full-line comments
+starting with `#` or `;` are supported. Values are unquoted; inline comments are not supported.
+The first `=` separates key from value. Unknown keys, duplicates, repeated sections,
+missing settings and malformed lines are errors. Input uses bufio.Scanner's default token limit;
+oversized lines produce a read error.
+
+Relative paths resolve from the process working directory, including repository paths.
+Normal mode validates URL syntax and scheme only; it does not contact the repository.
+Test mode checks file accessibility and type, without interpreting graph contents.
+The test fixture is a placeholder; graph syntax will be defined in stage 3.
+
+## Usage and error demonstrations
+
+Run from the project root:
+
+```bash
+go run ./src -config configs/online.ini
+go run ./src -config configs/test.ini
+```
+
+Normal output:
+
+```text
+package=requests
+repository=https://pypi.org
+test_mode=false
+```
+
+Output order is always package, repository, test_mode, with a final newline.
+Success returns exit code 0. File, INI, parameter, and output errors return exit code 1
+and print a diagnostic to stderr. No settings are printed when configuration loading fails.
+
+To demonstrate errors, copy configs/online.ini to a temporary file and try each change separately:
+
+| Change | Expected diagnostic |
+| --- | --- |
+| `package=-requests` | invalid Python distribution name |
+| `repository=not-a-url` | expected an HTTP or HTTPS URL with a host |
+| `test_mode=yes` | expected true or false |
+| Delete any required key | missing required setting |
+| Use `-config missing.ini` | open config error |
+
+In configs/test.ini, try a missing repository path or a directory to demonstrate test-file errors.
+The tests exercise successful configurations in both modes and these failure categories.
+
+## Functions
+
+| Function | Responsibility |
+| --- | --- |
+| `main` | Parse the optional config-file flag and exit with Run's result |
+| `Run` | Load settings, write output or diagnostics, return an exit code |
+| `LoadConfig` | Open and close the INI file, parse and validate settings |
+| `parseConfig` | Scan sections and lines; report syntax and reading errors |
+| `parseConfigLine` | Handle comments, section placement and individual setting lines |
+| `addSetting` | Split one pair; reject empty, unknown and duplicate settings |
+| `validateConfig` | Check required keys and mode-specific parameter rules |
+| `validateRepositoryURL` | Check URL parsing, HTTP/HTTPS scheme and host |
+| `validateTestRepository` | Check that a test path opens as a regular file |
+| `stringConfig` | Format settings in a stable order |
+
+The config-file flag defaults to config.ini. User settings themselves come from INI.
+Stage results should be saved in a public repository with a descriptive Conventional Commit.

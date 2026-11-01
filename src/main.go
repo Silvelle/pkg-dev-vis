@@ -1,4 +1,4 @@
-// Command pkg-dep-vis visualizes the dependency graph of a pip package.
+// Command pkg-dep-vis displays configuration for a pip dependency visualizer.
 package main
 
 import (
@@ -9,10 +9,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String(
-		"config",
-		"config.ini",
-		"Path to INI file",
-	)
+	configPath := flag.String("config", "config.ini", "Path to INI file")
+	flag.Parse()
 	os.Exit(app.Run(*configPath, os.Stdout, os.Stderr))
 }
