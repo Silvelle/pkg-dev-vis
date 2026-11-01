@@ -8,6 +8,7 @@ import (
 	"github.com/Silvelle/pkg-dep-vis/src/app"
 )
 
+// main parses the config-file flag and exits with the result of app.Run.
 func main() {
 	configPath := flag.String("config", "config.ini", "Path to INI file")
 	flag.Parse()

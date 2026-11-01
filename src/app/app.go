@@ -14,17 +14,25 @@ import (
 // Name identifies the application.
 const Name = "pkg-dep-vis"
 
-// Process exit codes.
+// Process exit codes returned by Run.
 const (
-	ExitOK    = 0
+	// ExitOK indicates that configuration loading and output succeeded.
+	ExitOK = 0
+	// ExitError indicates a configuration, file, or output error.
 	ExitError = 1
 )
 
+// settingKeys lists required settings in their output order.
 var settingKeys = []string{"package", "repository", "test_mode"}
+
+// packageName matches valid Python distribution names without normalization.
 var packageName = regexp.MustCompile(`\A[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?\z`)
+
+// testPackageName matches names consisting of uppercase ASCII letters.
 var testPackageName = regexp.MustCompile(`\A[A-Z]+\z`)
 
 // Run loads settings, prints them, and returns the process exit code.
+// It writes settings to stdout and errors to stderr without exiting the process.
 func Run(configPath string, stdout, stderr io.Writer) int {
 	parameters, err := LoadConfig(configPath)
 	if err != nil {
@@ -38,6 +46,7 @@ func Run(configPath string, stdout, stderr io.Writer) int {
 	return ExitOK
 }
 
+// stringConfig formats validated settings in a fixed order with a final newline.
 func stringConfig(parameters map[string]string) string {
 	var result strings.Builder
 	for _, key := range settingKeys {
@@ -47,6 +56,7 @@ func stringConfig(parameters map[string]string) string {
 }
 
 // LoadConfig parses and validates an INI file.
+// It returns settings on success or an error for file, syntax, or parameter failures.
 // Relative repository paths are resolved from the process working directory.
 func LoadConfig(configPath string) (map[string]string, error) {
 	file, err := os.Open(configPath)
@@ -64,6 +74,8 @@ func LoadConfig(configPath string) (map[string]string, error) {
 	return parameters, nil
 }
 
+// parseConfig reads a single settings section and returns its key-value pairs.
+// Syntax errors include line numbers; parameter validation is left to validateConfig.
 func parseConfig(reader io.Reader) (map[string]string, error) {
 	parameters := make(map[string]string)
 	scanner := bufio.NewScanner(reader)
@@ -85,6 +97,8 @@ func parseConfig(reader io.Reader) (map[string]string, error) {
 	return parameters, nil
 }
 
+// parseConfigLine handles a trimmed INI line and updates parameters for a setting.
+// It returns whether the settings section has started and any syntax error.
 func parseConfigLine(parameters map[string]string, line string, inSettings bool) (bool, error) {
 	if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
 		return inSettings, nil
@@ -101,6 +115,8 @@ func parseConfigLine(parameters map[string]string, line string, inSettings bool)
 	return inSettings, addSetting(parameters, line)
 }
 
+// addSetting splits a key-value pair at the first equals sign and stores it.
+// It rejects empty keys or values, unknown settings, and duplicate keys.
 func addSetting(parameters map[string]string, line string) error {
 	key, value, found := strings.Cut(line, "=")
 	if !found {
@@ -122,6 +138,8 @@ func addSetting(parameters map[string]string, line string) error {
 	return nil
 }
 
+// validateConfig checks required settings and applies rules for the selected mode.
+// It returns the first missing or invalid parameter error.
 func validateConfig(parameters map[string]string) error {
 	for _, key := range settingKeys {
 		if parameters[key] == "" {
@@ -144,6 +162,8 @@ func validateConfig(parameters map[string]string) error {
 	}
 }
 
+// validateRepositoryURL checks for an HTTP or HTTPS URL with a host.
+// It validates syntax without making network requests.
 func validateRepositoryURL(value string) error {
 	parsed, err := url.Parse(value)
 	if err != nil {
@@ -155,6 +175,8 @@ func validateRepositoryURL(value string) error {
 	return nil
 }
 
+// validateTestRepository checks that path opens for reading as a regular file.
+// It does not parse the file's graph contents.
 func validateTestRepository(path string) error {
 	file, err := os.Open(path)
 	if err != nil {

@@ -1,60 +1,128 @@
-# Dependency graph visualizer for pip packages
+# Визуализатор графа зависимостей pip-пакетов
 
-Coursework, variant 19. Stage 1 implements a configurable CLI and displays its settings.
-Later stages will collect dependencies, traverse them with non-recursive BFS,
-find reverse dependencies, and produce PlantUML. Those stages are not implemented yet.
+Практическая работа №2 по дисциплине
+«Конфигурационное управление», вариант №19.
+Язык реализации — Go, только стандартная библиотека.
 
-## Build and test
+## Общее описание
 
-Requires Go 1.27 or newer. Uses the standard library only.
+Цель проекта — получить зависимости Python-пакета
+и представить их в виде графа на языке PlantUML.
+Получение зависимостей должно выполняться
+без готовых менеджеров пакетов и библиотек.
+
+Реализован **этап 1**: консольное приложение читает
+INI-файл, проверяет параметры и выводит их
+в формате `ключ=значение`. Ошибки сопровождаются
+сообщением и ненулевым кодом завершения.
+
+## Настройки
+
+По умолчанию читается `config.ini`.
+Другой файл можно выбрать флагом `-config`.
+Все три настройки обязательны и задаются в INI,
+в единственной секции `[settings]`.
+
+| Параметр | Назначение |
+| --- | --- |
+| `package` | Имя анализируемого пакета |
+| `repository` | URL или путь к тестовому файлу |
+| `test_mode` | Тестовый режим: `true` или `false` |
+
+При `test_mode=false`:
+
+- `package` — имя дистрибутива Python;
+- допустимы латинские буквы, цифры, `.`, `_`, `-`;
+- первый и последний символы — буква или цифра;
+- `repository` — URL с `http` или `https` и хостом.
+
+Правила имён соответствуют [спецификации PyPA][pypa].
+
+При `test_mode=true`:
+
+- имя пакета содержит только заглавные буквы `A–Z`;
+- `repository` — доступный для чтения обычный файл.
+
+Относительные пути отсчитываются от текущего
+рабочего каталога, а не от каталога INI-файла.
+На этапе 1 URL проверяется без обращения к серверу,
+а содержимое тестового графа ещё не разбирается.
+
+### Поддерживаемый синтаксис INI
+
+- Пробелы по краям строк, ключей и значений удаляются.
+- Пустые строки пропускаются.
+- Строки с `#` или `;` в начале считаются комментариями.
+- Пара разделяется по первому символу `=`.
+- Значения задаются без кавычек.
+- Комментарии после значения не поддерживаются.
+- Неизвестные и повторяющиеся ключи запрещены.
+- Пустые значения и повторные секции запрещены.
+
+Слишком длинная строка, превышающая стандартный
+лимит `bufio.Scanner`, приводит к ошибке чтения.
+
+## Сборка и тестирование
+Требуется Go 1.27 или новее. Команды выполняются
+из корня проекта.
 
 ```bash
-make build
-make test
-make check
+make build   # сборка в bin/pkg-dep-vis
+make test    # запуск тестов
+make run     # запуск с config.ini
+make check   # тесты, линтер и проверка репозитория
 ```
 
-`make check` also requires golangci-lint. To use a writable temporary Go cache:
+Для `make check` нужен `golangci-lint` в `PATH`.
+В нём проверяются имена Go, Godoc, длина функций,
+число аргументов, сложность и оформление строк.
+Скрипт `scripts/check_repo.sh` проверяет структуру,
+коммиты и отсутствие запрещённых файлов.
+
+Если каталог кеша Go недоступен для записи:
 
 ```bash
 GOCACHE=/tmp/pkg-dev-vis-go-cache make test
 ```
 
-## Configuration
+## Примеры использования
 
-The INI file must contain exactly one `[settings]` section and all three keys:
+### Обычный режим
 
-| Key | Meaning |
-| --- | --- |
-| `package` | Python distribution name; uppercase ASCII letters only in test mode |
-| `repository` | HTTP/HTTPS URL in normal mode; readable regular file in test mode |
-| `test_mode` | Exactly `true` or `false`, lowercase |
+За основу примера взят [конфиг проекта depviz][source].
+В оригинале используются CSV, Maven и `package_name`:
 
-Normal package names follow the Python Packaging name specification:
-ASCII letters, digits, period, underscore and hyphen, starting and ending with a letter or digit.
-See https://packaging.python.org/en/latest/specifications/name-normalization/.
-
-Whitespace around lines, keys and values is ignored. Blank lines and full-line comments
-starting with `#` or `;` are supported. Values are unquoted; inline comments are not supported.
-The first `=` separates key from value. Unknown keys, duplicates, repeated sections,
-missing settings and malformed lines are errors. Input uses bufio.Scanner's default token limit;
-oversized lines produce a read error.
-
-Relative paths resolve from the process working directory, including repository paths.
-Normal mode validates URL syntax and scheme only; it does not contact the repository.
-Test mode checks file accessibility and type, without interpreting graph contents.
-The test fixture is a placeholder; graph syntax will be defined in stage 3.
-
-## Usage and error demonstrations
-
-Run from the project root:
-
-```bash
-go run ./src -config configs/online.ini
-go run ./src -config configs/test.ini
+```csv
+key,value
+package_name,org.apache.commons:commons-text:1.12.0
+repository,https://repo1.maven.org/maven2
+test_mode,false
 ```
 
-Normal output:
+Для варианта №19 пример адаптирован под INI и pip.
+Используется ключ `package`, пакет `requests`
+и репозиторий PyPI. Готовый файл — `configs/online.ini`:
+
+```ini
+[settings]
+package = requests
+repository = https://pypi.org
+test_mode = false
+```
+
+Запуск:
+
+```bash
+make run ARGS="-config configs/online.ini"
+```
+
+Или после `make build`:
+
+```bash
+./bin/pkg-dep-vis -config configs/online.ini
+```
+
+Вывод приложения:
 
 ```text
 package=requests
@@ -62,37 +130,89 @@ repository=https://pypi.org
 test_mode=false
 ```
 
-Output order is always package, repository, test_mode, with a final newline.
-Success returns exit code 0. File, INI, parameter, and output errors return exit code 1
-and print a diagnostic to stderr. No settings are printed when configuration loading fails.
+### Тестовый режим
 
-To demonstrate errors, copy configs/online.ini to a temporary file and try each change separately:
+Файл `configs/test.ini`:
 
-| Change | Expected diagnostic |
+```ini
+[settings]
+package = A
+repository = configs/test-repository.txt
+test_mode = true
+```
+
+Запуск:
+
+```bash
+./bin/pkg-dep-vis -config configs/test.ini
+```
+
+Вывод:
+
+```text
+package=A
+repository=configs/test-repository.txt
+test_mode=true
+```
+
+Тестовый файл пока служит заглушкой для проверки
+доступности пути. Формат графа появится на этапе 3.
+
+### Обработка ошибок
+
+Для демонстрации скопируйте `configs/online.ini`
+во временный файл и изменяйте по одному параметру.
+
+| Изменение | Результат |
 | --- | --- |
-| `package=-requests` | invalid Python distribution name |
-| `repository=not-a-url` | expected an HTTP or HTTPS URL with a host |
-| `test_mode=yes` | expected true or false |
-| Delete any required key | missing required setting |
-| Use `-config missing.ini` | open config error |
+| `package=-requests` | Ошибка имени пакета |
+| `repository=not-a-url` | Ошибка URL |
+| `test_mode=yes` | Ошибка режима |
+| Удаление обязательного ключа | Ошибка отсутствующего параметра |
 
-In configs/test.ini, try a missing repository path or a directory to demonstrate test-file errors.
-The tests exercise successful configurations in both modes and these failure categories.
+Пример запуска с отсутствующим файлом:
 
-## Functions
+```bash
+./bin/pkg-dep-vis -config missing.ini
+echo $?
+```
 
-| Function | Responsibility |
+Программа выведет ошибку в `stderr` и завершится
+с кодом `1`. При успехе код завершения — `0`.
+При ошибке загрузки настройки в `stdout` не выводятся.
+Порядок успешного вывода всегда одинаков:
+`package`, `repository`, `test_mode`.
+
+В тестовом режиме отсутствующий файл или каталог
+вместо файла также приводят к ошибке `repository`.
+Тесты проверяют оба режима и ошибки всех параметров.
+
+## Функции программы
+
+| Функция | Назначение |
 | --- | --- |
-| `main` | Parse the optional config-file flag and exit with Run's result |
-| `Run` | Load settings, write output or diagnostics, return an exit code |
-| `LoadConfig` | Open and close the INI file, parse and validate settings |
-| `parseConfig` | Scan sections and lines; report syntax and reading errors |
-| `parseConfigLine` | Handle comments, section placement and individual setting lines |
-| `addSetting` | Split one pair; reject empty, unknown and duplicate settings |
-| `validateConfig` | Check required keys and mode-specific parameter rules |
-| `validateRepositoryURL` | Check URL parsing, HTTP/HTTPS scheme and host |
-| `validateTestRepository` | Check that a test path opens as a regular file |
-| `stringConfig` | Format settings in a stable order |
+| `main` | Разбор флага и завершение процесса |
+| `Run` | Загрузка, вывод и код завершения |
+| `LoadConfig` | Открытие, разбор и проверка INI |
+| `parseConfig` | Чтение строк и контроль ошибок |
+| `parseConfigLine` | Разбор секции или строки |
+| `addSetting` | Добавление пары ключ-значение |
+| `validateConfig` | Проверка параметров и режима |
+| `validateRepositoryURL` | Проверка URL репозитория |
+| `validateTestRepository` | Проверка тестового файла |
+| `stringConfig` | Формирование вывода настроек |
 
-The config-file flag defaults to config.ini. User settings themselves come from INI.
-Stage results should be saved in a public repository with a descriptive Conventional Commit.
+## Структура проекта
+
+```text
+src/main.go       точка входа
+src/app/app.go    загрузка и проверка настроек
+configs/          примеры конфигураций
+config.ini        конфигурация по умолчанию
+tests/            автоматические тесты
+scripts/          проверки репозитория
+Makefile          команды сборки и проверок
+```
+
+[source]: https://github.com/Milady-Debug/depviz/blob/main/config.csv
+[pypa]: https://packaging.python.org/en/latest/specifications/name-normalization/
