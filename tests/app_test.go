@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,8 +41,11 @@ func assertRun(t *testing.T, path, wantOutput string, wantCode int, errorText st
 }
 
 func TestRunPrintsAllSettings(t *testing.T) {
-	want := "package=requests\nrepository=https://pypi.org\ntest_mode=false\n"
-	assertRun(t, writeConfig(t, validINI), want, app.ExitOK, "")
+	repository := mockRepository(t, "/pypi/requests/json",
+		`{"info":{"requires_dist":["urllib3<3,>=1.21.1"]}}`, http.StatusOK)
+	config := strings.Replace(validINI, "https://pypi.org", repository, 1)
+	want := "package=requests\nrepository=" + repository + "\ntest_mode=false\nurllib3<3,>=1.21.1\n"
+	assertRun(t, writeConfig(t, config), want, app.ExitOK, "")
 }
 
 func TestRunTestRepository(t *testing.T) {

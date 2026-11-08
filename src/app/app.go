@@ -1,4 +1,4 @@
-// Package app loads and displays configuration for the dependency visualizer.
+// Package app loads configuration and retrieves Python package dependencies.
 package app
 
 import (
@@ -31,8 +31,8 @@ var packageName = regexp.MustCompile(`\A[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?
 // testPackageName matches names consisting of uppercase ASCII letters.
 var testPackageName = regexp.MustCompile(`\A[A-Z]+\z`)
 
-// Run loads settings, prints them, and returns the process exit code.
-// It writes settings to stdout and errors to stderr without exiting the process.
+// Run prints settings and, in online mode, direct dependency declarations.
+// It writes errors to stderr and returns the process exit code.
 func Run(configPath string, stdout, stderr io.Writer) int {
 	parameters, err := LoadConfig(configPath)
 	if err != nil {
@@ -42,6 +42,19 @@ func Run(configPath string, stdout, stderr io.Writer) int {
 	if _, err := fmt.Fprint(stdout, stringConfig(parameters)); err != nil {
 		_, _ = fmt.Fprintln(stderr, "error:", err)
 		return ExitError
+	}
+	if parameters["test_mode"] == "false" {
+		dependencies, err := LoadDependencies(parameters["repository"], parameters["package"])
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, "error:", err)
+			return ExitError
+		}
+		for _, dependency := range dependencies {
+			if _, err := fmt.Fprintln(stdout, dependency); err != nil {
+				_, _ = fmt.Fprintln(stderr, "error:", err)
+				return ExitError
+			}
+		}
 	}
 	return ExitOK
 }
