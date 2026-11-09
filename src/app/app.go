@@ -31,7 +31,7 @@ var packageName = regexp.MustCompile(`\A[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?
 // testPackageName matches names consisting of uppercase ASCII letters.
 var testPackageName = regexp.MustCompile(`\A[A-Z]+\z`)
 
-// Run prints settings and, in online mode, the transitive dependency graph.
+// Run prints settings and the transitive dependency graph for the selected mode.
 // It writes errors to stderr and returns the process exit code.
 func Run(configPath string, stdout, stderr io.Writer) int {
 	parameters, err := LoadConfig(configPath)
@@ -43,16 +43,18 @@ func Run(configPath string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "error:", err)
 		return ExitError
 	}
-	if parameters["test_mode"] == "false" {
-		graph, err := LoadGraph(parameters["repository"], parameters["package"])
-		if err != nil {
-			_, _ = fmt.Fprintln(stderr, "error:", err)
-			return ExitError
-		}
-		if err := PrintGraph(stdout, graph); err != nil {
-			_, _ = fmt.Fprintln(stderr, "error:", err)
-			return ExitError
-		}
+	load := LoadGraph
+	if parameters["test_mode"] == "true" {
+		load = LoadTestGraph
+	}
+	graph, err := load(parameters["repository"], parameters["package"])
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "error:", err)
+		return ExitError
+	}
+	if err := PrintGraph(stdout, graph); err != nil {
+		_, _ = fmt.Fprintln(stderr, "error:", err)
+		return ExitError
 	}
 	return ExitOK
 }

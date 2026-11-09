@@ -50,9 +50,9 @@ func TestRunPrintsAllSettings(t *testing.T) {
 }
 
 func TestRunTestRepository(t *testing.T) {
-	repository := writeConfig(t, "# graph contents are not parsed in stage 1\n")
+	repository := writeConfig(t, "A: B\nB:\n")
 	text := fmt.Sprintf("[settings]\npackage=A\nrepository=%s\ntest_mode=true\n", repository)
-	want := fmt.Sprintf("package=A\nrepository=%s\ntest_mode=true\n", repository)
+	want := fmt.Sprintf("package=A\nrepository=%s\ntest_mode=true\nA: B\nB: \n", repository)
 	assertRun(t, writeConfig(t, text), want, app.ExitOK, "")
 }
 

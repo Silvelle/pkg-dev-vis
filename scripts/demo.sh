@@ -2,11 +2,11 @@
 # Run from the project root: sh scripts/demo.sh
 make build
 
-echo '--- requests: direct dependencies ---'
+echo '--- requests: dependency graph ---'
 ./bin/pkg-dep-vis -config configs/online.ini
 
 echo '--- idna: dependency declarations ---'
 ./bin/pkg-dep-vis -config configs/no-dependencies.ini
 
-echo '--- test mode: configuration and file validation ---'
+echo '--- test mode: dependency graph from a file ---'
 ./bin/pkg-dep-vis -config configs/test.ini

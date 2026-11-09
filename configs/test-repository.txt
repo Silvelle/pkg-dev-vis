@@ -1,2 +1,5 @@
-# Stage 1 fixture: only file accessibility is checked.
-# Graph syntax and dependency reading will be defined in stage 3.
+# Shared transitive dependency D.
+A: B C
+B: D
+C: D
+D:
